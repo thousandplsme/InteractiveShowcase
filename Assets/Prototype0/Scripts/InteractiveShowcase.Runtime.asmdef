@@ -1,0 +1,4 @@
+{
+    "name": "InteractiveShowcase.Runtime",
+    "references": ["Unity.ugui"]
+}

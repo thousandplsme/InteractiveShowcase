@@ -1,0 +1,6 @@
+{
+    "name": "InteractiveShowcase.Tests",
+    "references": ["InteractiveShowcase.Runtime", "Unity.ugui"],
+    "includePlatforms": ["Editor"],
+    "optionalUnityReferences": ["TestAssemblies"]
+}

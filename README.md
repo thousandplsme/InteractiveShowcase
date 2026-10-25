@@ -1,0 +1,141 @@
+# InteractiveShowcase — Prototype 0
+
+中古PC店舗のショーケース向けインタラクティブ展示の技術検証です。
+Webカメラの顔位置をPythonで検出し、同一PCのUnity Canvas上の円形マーカーを追従させます。
+**実装対象はPrototype 0のみ。実カメラによる受入試験完了までは完成扱いにしません。**
+
+## 構成
+
+既存のURPプロジェクトがリポジトリ直下に作成済みのため、移動・複製せず維持しています。
+
+```text
+InteractiveShowcase/
+├── Assets/Prototype0/
+│   ├── Scripts/         # UdpVisionReceiver / FaceFollower / CircleMarker
+│   ├── Editor/          # 新規シーン生成メニュー
+│   ├── Scenes/          # Prototype0.unity
+│   └── Tests/Editor/    # Unity自動テスト
+├── Packages/            # 既存URP構成を保持
+├── ProjectSettings/
+├── vision/
+│   ├── main.py
+│   ├── face_detector.py
+│   ├── udp_sender.py
+│   ├── requirements.txt
+│   ├── requirements-lock.txt
+│   └── tests/
+└── docs/architecture.md
+```
+
+元の `Assets/Scenes/SampleScene.unity`、Input設定、URPアセットは保持しています。
+新しいシーンは2D Canvasのみを使用します。将来の3D展示用にURPを維持しています。
+
+## 環境
+
+- Windows / Unity **6000.3.27f1 (6.3 LTS)** / URP **17.3.0** / uGUI **2.0.0**
+- Python **3.11.9 x64**（既存インストールを利用）/ Git **2.52.0.windows.1**
+- MediaPipe **0.10.21** / OpenCV (`opencv-contrib-python`) **4.11.0.86** / NumPy **1.26.4**
+- Editor操作・検証用：Unity CLI **1.0.0-beta.14**、`com.unity.pipeline` **0.9.1-exp.1**。Python送信・Unity実行の通信には使用しません。
+
+MediaPipeの既存Face Mesh Solutions APIを使うためバージョンを固定します。
+[配布ファイル](https://pypi.org/project/mediapipe/0.10.21/#files)のあるPython 3.11を使用し、PATH上のPython 3.13にそのままインストールしないでください。
+OpenCVパッケージの重複を避けるため、`opencv-python` を追加インストールしません。
+MediaPipeの間接依存としてJAX・Matplotlib・sounddevice等が入りますが、アプリでは音声取得や音声出力を行いません。
+
+## Windowsでのセットアップ
+
+以下はリポジトリルートでPowerShellから実行します。仮想環境のactivateは不要です。
+
+```powershell
+# Python Launcherで3.11が見つかる環境
+py -3.11 -m venv vision/.venv
+# Launcherで見つからない場合、既存のPython 3.11を直接指定
+# & "$env:LOCALAPPDATA/Programs/Python/Python311/python.exe" -m venv vision/.venv
+./vision/.venv/Scripts/python.exe -m pip install -r vision/requirements-lock.txt
+./vision/.venv/Scripts/python.exe -m pip check
+```
+
+`requirements.txt` は主要依存の固定値、`requirements-lock.txt` は検証時の間接依存を含む固定一覧です。
+初回セットアップ時はパッケージ取得にインターネットが必要です。検出モデルはMediaPipeパッケージに含まれ、実行中のモデルダウンロードやクラウド推論は行いません。
+
+## 実行
+
+1. Unity Hubから**このリポジトリルート**をUnity 6000.3.27f1で開きます。
+2. `Assets/Prototype0/Scenes/Prototype0.unity` を開いてPlayします。
+   シーンがない場合のみ `InteractiveShowcase > Create Prototype 0 Scene` を実行します。既存シーンは上書きしません。
+3. 別のPowerShellでPythonを起動します。
+
+```powershell
+./vision/.venv/Scripts/python.exe vision/main.py --camera 0
+```
+
+別のカメラは `--camera 1` 等で指定します。`--preview` を付けると保存せずにカメラ映像と検出中心を一時表示します（**プレビューは左右反転なし**）。終了はCtrl+C、プレビューありではQも使えます。
+Unityを先に起動してもPythonを先に起動しても構いません。ポートは既定5005、Pythonの `--port` とUnityのReceiverのPortを一致させてください。
+
+`Vision Tracking` のFaceFollowerで調整します。
+
+| 設定 | 既定 | 意味 |
+|---|---|---|
+| Mirror X | ON | 鏡のように左右反転。生カメラ映像と同じ座標方向にするならOFF |
+| Flip Y | ON | 画像の下向きYをCanvasの上向きYへ変換 |
+| Smooth Time | 0.08秒 | 追従の平滑化。大きいほど緩やか |
+| Receiver / Timeout Seconds | 0.5秒 | 有効データが来なくなったら非表示 |
+
+最初の検出・再検出時は顔位置へ即座に表示し、継続検出中のみ補間します。
+顔サイズは送信・保持しますがPrototype 0のマーカーは直径80の固定サイズです。
+UI操作がないためEventSystemやGraphicRaycasterは不要です。
+
+## 自動テスト
+
+カメラを開かず、人工座標・黒画像・localhost UDPで確認します。
+
+```powershell
+./vision/.venv/Scripts/python.exe -m unittest discover -s vision/tests -v
+```
+
+Unityは `Window > General > Test Runner > EditMode` で `InteractiveShowcase.Tests` を実行します。
+実UDP受信、タイムアウト、不正データ、再有効化、ポート解放、座標変換を検査します。
+テストは一時ポートを利用し、通常の5005へ割り込みません。
+検証結果と未確認事項は [docs/validation.md](docs/validation.md) に記載します。
+
+## 人間による受入試験（開発用PC）
+
+| 項目 | 期待結果 |
+|---|---|
+| 顔を映す | 円形マーカー表示 |
+| 左右・上下へ移動 | 設定した方向へ自然に追従。過度な揺れや遅れがない |
+| 顔を画角外へ | 未検出パケット受信後に非表示 |
+| 約5分連続 | 異常終了や顕著な遅延増加がない |
+| Pythonを停止 | Unityが固まらず、遅くとも最後の有効受信から約0.5秒で非表示 |
+| Pythonを再起動 | Unityを再起動せず追従復帰 |
+
+Unity Editorのバックグラウンド停止や一時停止中は表示更新されません。確認時はPlay中のGameビューを前面にしてください。
+カメラを他アプリが使用中の場合はそのアプリを閉じ、Windowsのカメラ利用権限も確認します。
+カメラのオープン・取得に失敗した場合はメッセージを出して終了します。再接続後にPythonを再起動してください。
+ポート競合はUnity Consoleに通知されます。もう一つのReceiverやアプリを停止し、Playを再開始してください。
+
+## DXfesとの関係・権利範囲
+
+[DXfes / AttenCheck](https://github.com/thousandplsme/DXfes) の顔検知技術を発展させた別プロジェクトです。
+指定された `ai_logic.py`、`demo_final.py`、`demo_day.py`、`final_tune.py`、`README.md` を参照しました。
+参照元READMEでは「顔検知・AI機能＝本人」「アプリ枠組み・3D素材＝チームメンバー」と記載されています。
+
+再利用した考え方はOpenCV取得、BGR→RGB変換、MediaPipe最大1人のlandmark取得です。顔中心・サイズ計算、UDP通信、Unity表示は本プロジェクト向けに実装しました。
+`ai_logic.py` のスコア処理には未定義の `abs_pitch` / `abs_roll` があり、そのまま実行すると問題が生じるため移植しません。顔向き計算も実角度としての精度が未確認なので対象外です。
+チーム制作のアプリ枠組み、3Dモデル、画像、発表資料は移植していません。混在ファイル全体の単独著作性は未確認であり、将来丸ごと移植する場合には権利確認が必要です。DXfesへの変更はありません。
+
+## プライバシー・制限
+
+- 顔画像の保存・録画・個人識別・年齢/性別/感情推定・クラウド送信を行いません。
+- カメラ画像はメモリ上で処理し、UDPでは検出有無と正規化座標・サイズのみをlocalhostへ送信します。
+- 顔座標・画像をログへ出力しません。`--preview` はローカルの一時表示のみです。
+- 最大1人。複数人が映った際の対象人物の固定や個人追跡は保証しません。
+- UDPは到達保証がなく、途絶時は非表示とします。正常復帰は次の有効パケットで行います。
+- ガチャ、運勢、JACKPOT、キャラクター、3D演出、Particle/Shader、音、視線・瞬き操作、GPU計測、FPS表示、自動起動、外部APIは対象外です。
+- MSI GE76 RAIDER 10UG向けの最適化・実機検証は行っていません。
+- 店頭導入前にカメラ・ガラス越し検出・反射/照明/角度、店舗責任者の撮影/案内方法承認、機材安全を別途確認してください。
+
+UnityはVisible Meta Files / Force Textです。`.meta` を管理し、Unityキャッシュ、仮想環境、ビルド、テスト出力、秘密鍵・`.env`・撮影データは除外します。
+既存URPアセット等にはUnity 6000.3.27f1によるシリアライズ形式の更新が含まれます。レンダリング機能の追加やパイプライン変更はしていません。
+`.gitignore` はGitHub公式の [Unity](https://github.com/github/gitignore/blob/main/Unity.gitignore) / [Python](https://github.com/github/gitignore/blob/main/Python.gitignore) テンプレートを参考にしています。
+Git LFSはPrototype 0では使用せず、大きな3Dアセットを追加する時点で再検討します。
