@@ -45,6 +45,7 @@ Webカメラ
 ## Canvas
 
 Overlay Canvas、基準1920×1080、Scale With Screen Size、Match 0.5。
+Game Viewの「No cameras rendering」を防ぐ背景専用Cameraを1台配置します。Solid Color・Culling Mask=Nothingで、3Dオブジェクトは描画しません。マーカーは従来どおりOverlay Canvasで描画します。
 `FaceFollower` はCanvasの現在サイズを用いて座標を変換します。X反転とY反転は独立したInspector設定です。
 マーカーはCanvas直下、中心anchor/pivotで直径80。サイズ情報による拡縮は行いません。
 初回・復帰時は即座に位置を合わせ、連続検出中はSmoothDamp（既定0.08秒、unscaledDeltaTime）で平滑化します。

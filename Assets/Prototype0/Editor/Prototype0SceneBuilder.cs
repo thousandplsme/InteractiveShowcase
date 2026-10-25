@@ -28,6 +28,16 @@ namespace InteractiveShowcase.Editor
             Scene previous = SceneManager.GetActiveScene();
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
             SceneManager.SetActiveScene(scene);
+            // Overlay UI still needs an active camera to avoid Game View's
+            // "No cameras rendering" message. Render only a solid background.
+            var cameraObject = new GameObject("Background Camera", typeof(Camera),
+                typeof(UnityEngine.Rendering.Universal.UniversalAdditionalCameraData));
+            var camera = cameraObject.GetComponent<Camera>();
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0.025f, 0.035f, 0.055f, 1);
+            camera.cullingMask = 0;
+            camera.orthographic = true;
+            camera.transform.position = new Vector3(0, 0, -10);
             var root = new GameObject("Vision Tracking");
             var receiver = root.AddComponent<UdpVisionReceiver>();
             var follower = root.AddComponent<FaceFollower>();

@@ -29,6 +29,7 @@ InteractiveShowcase/
 
 元の `Assets/Scenes/SampleScene.unity`、Input設定、URPアセットは保持しています。
 新しいシーンは2D Canvasのみを使用します。将来の3D展示用にURPを維持しています。
+Game Viewの背景描画用Cameraを1台配置しています（Culling Mask=Nothing）。3D演出はありません。
 
 ## 環境
 
