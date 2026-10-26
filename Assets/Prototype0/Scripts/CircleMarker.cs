@@ -3,6 +3,7 @@ using UnityEngine;
 namespace InteractiveShowcase
 {
     // Procedural uGUI circle: no external textures or custom shader.
+    [RequireComponent(typeof(CanvasRenderer))]
     public sealed class CircleMarker : UnityEngine.UI.MaskableGraphic
     {
         protected override void OnPopulateMesh(UnityEngine.UI.VertexHelper mesh)

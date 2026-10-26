@@ -55,7 +55,7 @@ namespace InteractiveShowcase.Editor
             var backdrop = background.GetComponent<UnityEngine.UI.Image>();
             backdrop.color = new Color(0.025f, 0.035f, 0.055f, 1);
             backdrop.raycastTarget = false;
-            var marker = new GameObject("Face Marker", typeof(RectTransform), typeof(CircleMarker));
+            var marker = new GameObject("Face Marker", typeof(RectTransform), typeof(CanvasRenderer), typeof(CircleMarker));
             var markerRect = marker.GetComponent<RectTransform>();
             markerRect.SetParent(canvasObject.transform, false);
             markerRect.anchorMin = markerRect.anchorMax = new Vector2(0.5f, 0.5f);

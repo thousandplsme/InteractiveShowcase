@@ -10,6 +10,41 @@ namespace InteractiveShowcase.Tests
 {
     public class VisionTests
     {
+        [Test]
+        public void AddingCircleMarkerIncludesCanvasRenderer()
+        {
+            var marker = new GameObject("Circle renderer test", typeof(RectTransform));
+            try
+            {
+                marker.AddComponent<CircleMarker>();
+                Assert.IsNotNull(marker.GetComponent<CanvasRenderer>(), "A Graphic without CanvasRenderer cannot draw.");
+            }
+            finally { Object.DestroyImmediate(marker); }
+        }
+
+        [Test]
+        public void SavedSceneMarkerHasCanvasRenderer()
+        {
+            const string path = "Assets/Prototype0/Scenes/Prototype0.unity";
+            // Inspect the saved asset in isolation, including when the user's scene is unsaved.
+            var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenPreviewScene(path);
+            try
+            {
+                CircleMarker marker = null;
+                foreach (var root in scene.GetRootGameObjects())
+                {
+                    marker = root.GetComponentInChildren<CircleMarker>(true);
+                    if (marker != null) break;
+                }
+                Assert.IsNotNull(marker);
+                Assert.IsNotNull(marker.GetComponent<CanvasRenderer>());
+            }
+            finally
+            {
+                UnityEditor.SceneManagement.EditorSceneManager.ClosePreviewScene(scene);
+            }
+        }
+
         [TestCase("{\"faceDetected\":true,\"x\":0.52,\"y\":0.41,\"size\":0.28}", true)]
         [TestCase("{\"faceDetected\":false}", true)]
         [TestCase("{\"faceDetected\":true,\"x\":0.52,\"y\":0.41}", false)]
