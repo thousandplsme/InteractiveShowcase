@@ -40,6 +40,15 @@ def main():
         assembly = package.read(prefix + "InteractiveShowcase_Data/Managed/InteractiveShowcase.Runtime.dll")
         if b"ValidationProbe" in assembly:
             raise RuntimeError("Development validation probe present")
+        if manifest.get("prototype", 0) == 1:
+            p1 = package.read(prefix + "InteractiveShowcase_Data/Managed/InteractiveShowcase.Prototype1.dll")
+            if b"ExperienceValidationProbe" in p1:
+                raise RuntimeError("P1 development probe present")
+            for required in ("StartPrototype1.cmd", "config/experience.json", "Licenses/MPLUS1p-OFL.txt"):
+                if required not in expected_names:
+                    raise RuntimeError("P1 required file absent: " + required)
+        elif "config/experience.json" in expected_names:
+            raise RuntimeError("P1 settings mixed into P0 package")
         for required in ("InteractiveShowcase.exe", "UnityPlayer.dll", "StartShowcase.cmd", "SetupVision.cmd",
                          "CheckEnvironment.cmd", "vision/main.py", "vision/requirements-lock.txt", "config/vision.json", "README.md"):
             if required not in expected_names:

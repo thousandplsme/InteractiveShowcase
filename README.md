@@ -1,8 +1,13 @@
-# InteractiveShowcase — Prototype 0
+# InteractiveShowcase — Prototype 0 / Prototype 1
+
+Prototype 1は「約1秒検出 → 緑の円と挨拶を約2秒 → 退出後に再受付」を追加した版です。顔が消えても挨拶を表示し切り、通信切断時はリセットします。抽選・スロット演出は未実装です。
+[操作手順](docs/prototype1-operation.md)、[実装計画](docs/prototype1-plan.md)、[試験計画](docs/prototype1-tests.md)、[実装・検証結果](docs/prototype1-results.md)を参照してください。
+
+P1のWindowsアプリは `StartPrototype1.cmd`、Editorでは `Assets/Prototype1/Scenes/Prototype1.unity` を使います。P0のシーン・起動スクリプト・配布版は維持しています。以下のP0説明は、その基盤と過去の確認範囲です。
 
 中古PC店舗のショーケース向けインタラクティブ展示の技術検証です。
 Webカメラの顔位置をPythonで検出し、同一PCのUnity Canvas上の円形マーカーを追従させます。
-**実装対象はPrototype 0のみ。Windowsアプリでの実顔追従、気にならない程度の体感遅延、実カメラでの約5分連続動作をユーザー確認済みです。5分を超える連続動作と店頭環境は未確認です。**
+**Prototype 0ではWindowsアプリでの実顔追従、気にならない程度の体感遅延、実カメラでの約5分連続動作をユーザー確認済みです。5分を超える連続動作と店頭環境は未確認です。Prototype 1の実顔受入とは区別します。**
 
 左右・上下の追従方向と、顔の退出・再登場もユーザー確認済みです。
 初回は `SetupVision.cmd`、診断は `CheckEnvironment.cmd` を使用できます。

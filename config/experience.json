@@ -1,0 +1,5 @@
+{
+  "detectionHoldSeconds": 1.0,
+  "greetingSeconds": 2.0,
+  "exitHoldSeconds": 1.0
+}

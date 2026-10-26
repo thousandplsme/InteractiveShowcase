@@ -1,0 +1,6 @@
+{
+  "name": "InteractiveShowcase.Prototype1.Tests",
+  "references": ["InteractiveShowcase.Prototype1", "InteractiveShowcase.Runtime", "Unity.ugui", "Unity.TextMeshPro"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

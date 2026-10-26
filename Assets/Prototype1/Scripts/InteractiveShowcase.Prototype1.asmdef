@@ -1,0 +1,4 @@
+{
+  "name": "InteractiveShowcase.Prototype1",
+  "references": ["InteractiveShowcase.Runtime", "Unity.ugui", "Unity.TextMeshPro"]
+}

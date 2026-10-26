@@ -19,6 +19,7 @@ public static class Prototype0WindowsBuild
         public long sizeBytes;
         public double durationSeconds;
         public bool developmentBuild;
+        public int prototype;
     }
 
     public static string Build()
@@ -31,17 +32,19 @@ public static class Prototype0WindowsBuild
         return BuildPlayer(false);
     }
 
-    private static string BuildPlayer(bool development)
+    public static string BuildPrototype1() => BuildPlayer(true, 1);
+    public static string BuildPrototype1Release() => BuildPlayer(false, 1);
+
+    private static string BuildPlayer(bool development, int prototype = 0)
     {
         if (EditorApplication.isPlaying) throw new InvalidOperationException("Stop Play mode before building.");
         string root = Directory.GetParent(Application.dataPath).FullName;
-        string relativeOutput = development ? "Builds/WindowsPrototype0/InteractiveShowcase.exe"
-            : "Builds/WindowsPrototype0Release/InteractiveShowcase.exe";
+        string relativeOutput = "Builds/WindowsPrototype" + prototype + (development ? "" : "Release") + "/InteractiveShowcase.exe";
         string output = Path.Combine(root, relativeOutput);
         Directory.CreateDirectory(Path.GetDirectoryName(output));
         var options = new BuildPlayerOptions
         {
-            scenes = new[] { "Assets/Prototype0/Scenes/Prototype0.unity" },
+            scenes = new[] { "Assets/Prototype" + prototype + "/Scenes/Prototype" + prototype + ".unity" },
             locationPathName = output,
             target = BuildTarget.StandaloneWindows64,
             options = development ? BuildOptions.Development : BuildOptions.None
@@ -54,16 +57,27 @@ public static class Prototype0WindowsBuild
             output = relativeOutput,
             result = report.summary.result.ToString(), errors = (int)report.summary.totalErrors,
             warnings = (int)report.summary.totalWarnings, sizeBytes = (long)report.summary.totalSize,
-            durationSeconds = report.summary.totalTime.TotalSeconds, developmentBuild = development
+            durationSeconds = report.summary.totalTime.TotalSeconds, developmentBuild = development, prototype = prototype
         };
         string json = JsonUtility.ToJson(summary, true);
         Directory.CreateDirectory(Path.Combine(root, "TestResults"));
-        File.WriteAllText(Path.Combine(root, development ? "TestResults/windows-build.json" : "TestResults/windows-release-build.json"), json);
+        string reportDirectory = prototype == 0 ? "TestResults" : "TestResults/prototype1";
+        Directory.CreateDirectory(Path.Combine(root, reportDirectory));
+        File.WriteAllText(Path.Combine(root, reportDirectory, development ? "windows-build.json" : "windows-release-build.json"), json);
         if (report.summary.result != BuildResult.Succeeded) throw new InvalidOperationException(json);
         // Settings live beside the application, so Python and Unity can share the same file.
         string config = Path.Combine(Path.GetDirectoryName(output), "config");
         Directory.CreateDirectory(config);
         File.Copy(Path.Combine(root, "config/vision.json"), Path.Combine(config, "vision.json"), true);
+        if (prototype == 1)
+        {
+            File.Copy(Path.Combine(root, "config/experience.json"), Path.Combine(config, "experience.json"), true);
+            string licenses = Path.Combine(Path.GetDirectoryName(output), "Licenses");
+            Directory.CreateDirectory(licenses);
+            File.Copy(Path.Combine(root, "Assets/Prototype1/Fonts/OFL.txt"), Path.Combine(licenses, "MPLUS1p-OFL.txt"), true);
+            foreach (string path in Directory.GetFiles(Path.Combine(root, "Assets/TextMesh Pro"), "*.txt", SearchOption.AllDirectories))
+                File.Copy(path, Path.Combine(licenses, Path.GetFileName(path)), true);
+        }
         return json;
     }
 }
