@@ -1,10 +1,10 @@
 # Prototype 0 検証記録
 
-確認日：2026-10-26（日本時間）。**実装と下記自動確認は完了。実カメラの受入試験は未確認です。**
+確認日：2026-10-26（日本時間）。**実顔での表示・追従はユーザー確認済みです。実カメラでの5分連続動作、体感遅延などは別途確認待ちです。**
 
-追記：ユーザー確認でGame Viewの「No cameras rendering」が判明したため、背景専用Camera（Culling Mask=Nothing）を追加しました。シーン生成コードも更新し、Editor再コンパイルはエラー0・警告0。保存済みシーンの有効Cameraが1台、CanvasがOverlayであることを確認しました。修正後の画面表示・追従は目視確認待ちです。
+ユーザー確認でGame Viewの「No cameras rendering」が判明したため、背景専用Camera（Culling Mask=Nothing）を追加しました。シーン生成コードも更新し、保存済みシーンの有効Cameraが1台、CanvasがOverlayであることを確認しました。
 
-追加修正：Pythonプレビューでは顔付近に緑の円が表示される一方、Unityに表示されないとの報告を受け、CircleMarkerにCanvasRendererが欠落していることを確認しました。既存シーン・生成コードを修正し、RequireComponentで新規追加時にも必須化しました。追加した2件（コンポーネント自動付与・保存済みシーンの構成）のテストメソッドをEditor内で直接実行して成功を確認。描画メッシュ66頂点・64三角形・マテリアル1件を確認しました。従来10件のテスト全体はこの修正後には再実行していません。修正後の実顔追従はユーザー確認待ちです。
+Pythonプレビューでは顔付近に緑の円が表示される一方、Unityに表示されないとの報告を受け、CircleMarkerにCanvasRendererが欠落していることを確認しました。既存シーン・生成コードを修正し、RequireComponentで新規追加時にも必須化しました。描画メッシュ66頂点・64三角形・マテリアル1件を確認し、修正後にユーザーから「無事に追従しました」との報告を受けました。その後、追加2件を含むUnity全12テストを実行して成功を確認しています。
 
 ## 自動確認
 
@@ -13,12 +13,22 @@
 | Python依存関係 | Python 3.11.9 x64の専用venvへインストール、`pip check` 成功 |
 | Pythonテスト | 7件成功。顔矩形中心/幅、画角クリップ、不正landmark、実localhost UDP往復、閉じたsocket、カメラ失敗時の解放、MediaPipe実モデルの黒画像処理 |
 | Unityコンパイル・シーン生成 | Unity 6000.3.27f1のバッチ実行成功。別シーン `Prototype0.unity` を保存 |
-| Unityテスト | 10件成功。JSON検証8ケース、反転を含む座標変換、Play Mode内の実UDP受信/タイムアウト/再有効化/マーカー表示非表示/ポート解放 |
+| Unityテスト | 12件成功。JSON検証8ケース、座標変換、Play Mode内の実UDP受信/タイムアウト/再有効化/表示非表示/ポート解放、CanvasRenderer自動付与、保存済みシーンの描画部品 |
+| Python→Unity通し検証 | Editorの実シーンで成功。Pythonの実UdpSenderから送信し、5か所の位置・表示状態・描画メッシュを確認 |
+| 異常系 | 送信Python子プロセスの強制停止→タイムアウト→再起動、不正JSON/範囲外/必須値不足/NaN/不正UTF-8/サイズ超過からの復帰が成功 |
+| 5分人工データ試験 | 300.328秒・212回の人工位置変更に成功。異常系等を合わせ235チェック成功。観測中のUnity Error/Exception/Assertは0 |
+| 起動スクリプト | プロジェクト外のフォルダから通常/プレビュー両方の`--help`が成功。venv欠落時は案内と終了コード1を確認。カメラ自体は起動していない |
+| Windowsビルド | Unity 6000.3.27f1、Windows x64 Development Build、Prototype0シーンのみ。Succeeded / エラー0 / 警告0。ビルド報告169,125,856 bytes |
+| Windowsアプリ起動・受信 | ビルドしたexeをDirect3D 11で起動。カメラを使わない通し・異常系23チェックに成功（17.516秒）。検証中のUnity Error/Exception/Assertは0。試験後に検証アプリを終了 |
 | Git除外 | ルートと将来のサブディレクトリのLibrary/Temp/Logs/Obj/Builds/UserSettings、venv、Pythonキャッシュ、秘密情報ファイル、撮影データ用フォルダを確認 |
 | Unity meta | 追加したPrototype0のファイル・フォルダに必要なmetaが揃い、除外されないことを確認 |
 | 管理対象監査 | 巨大な生成ファイルなし。既存ファイルを含む最大ファイルは約41KB。代表的な秘密鍵/APIトークンのパターン検査で該当なし |
 
-UnityテストのXMLは `TestResults/editmode.xml`、バッチログは `Logs/` に生成されます。ログ・テスト出力はGit対象外です。顔画像・顔情報のログは作成していません。
+今回のUnity全12テスト結果は `TestResults/unit-tests.json` です。以前のバッチ実行のXMLは `TestResults/editmode.xml`、バッチログは `Logs/` にあります。ログ・テスト出力はGit対象外です。顔画像・受信した顔座標のログは作成していません。
+
+通し試験・異常系・5分試験の根拠は `TestResults/editor-pipeline/report.json` です。人工データの送信プロセスとUnityのフレーム進行を確認しながら実行しています。位置一致は既定Canvas設定で誤差2以内、異なるフレームの正常応答が複数回続くことを条件としています。描画メッシュの成立確認は画面の視覚的な品質評価ではありません。再現手順は [automated-validation.md](automated-validation.md) を参照してください。
+
+Windowsビルドの根拠は `TestResults/windows-build.json`、アプリ内の検証結果は `TestResults/player-pipeline/report.json` です。Player試験は描画APIを有効にしたアプリで行っていますが、画面を人間が目視して合格にしたものではありません。出力フォルダ全体は293ファイル・169,319,490 bytes（約161.5 MiB）です。実カメラのWindowsアプリでの追従確認は別途必要です。
 
 再実行（Unity Editorを閉じた状態）：
 
@@ -31,13 +41,13 @@ Unityを開いた状態ではTest Runnerから同じテストを実行できま�
 
 ## 未確認（ユーザーの目視確認待ち）
 
-- 実Webカメラの取得と実顔検出、Python→Unityを通した連続追従
-- 左右・上下の実際の見え方、円形マーカーの描画、自然さ・揺れ・体感遅延
+- 左右・上下それぞれの追従方向の明示的な確認、自然さ・揺れ・体感遅延の評価
 - 顔が消えた際の非表示、実Pythonプロセス停止/再起動時の見え方
 - 実カメラを用いた約5分連続動作
+- Windows用アプリでの実顔追従・画面の見え方
 - MSI GE76 RAIDER 10UG、ショーケース越し、反射・照明・設置角度、店頭での承認・機材安全
 
-人工データによるテスト成功を、上記受入項目の合格とは扱いません。現時点で単体テストはPython送信側とUnity受信側をそれぞれ実UDPで確認しており、実カメラを含む通し確認はしていません。
+人工データによるテスト成功を、上記受入項目の合格とは扱いません。実カメラからUnityへの表示・追従はユーザー報告で確認済みですが、それ以外の評価を推測して合格にしません。
 
 ## 留意点・解決済みの検証上の問題
 
@@ -47,7 +57,8 @@ Unityを開いた状態ではTest Runnerから同じテストを実行できま�
 - MediaPipeはfeedback tensor関連の警告を標準エラーへ出します。モデル初期化と黒画像処理は成功しています。実顔検出の品質は未確認です。
 - PipelineはEditor操作のため導入した公式の実験的パッケージです。Prototype 0の顔情報通信はこれに依存しません。
 - 同じUnityバージョンでの初期読み込みにより、PC_RPAsset・ShaderGraphSettings・URPProjectSettingsのシリアライズ形式更新とSceneTemplateSettingsの生成が発生しています。
-- スタンドアロンビルドは今回作成していません。既存Build SettingsのSampleSceneは維持しています。
+- Windows検証用ビルドを作成しました。既存Build SettingsのSampleSceneは維持し、ビルド時だけPrototype0を指定しています。
+- 今回のビルドが自動生成したURP/PlayerSettingsの差分は、`TestResults/build-generated-settings.patch` に退避して元に戻しました。検証終了後はEditorのPlayを停止し、Run In Backgroundも元のfalseに戻っています。
 
 ## DXfes参照証跡
 

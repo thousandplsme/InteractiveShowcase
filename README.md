@@ -2,7 +2,7 @@
 
 中古PC店舗のショーケース向けインタラクティブ展示の技術検証です。
 Webカメラの顔位置をPythonで検出し、同一PCのUnity Canvas上の円形マーカーを追従させます。
-**実装対象はPrototype 0のみ。実カメラによる受入試験完了までは完成扱いにしません。**
+**実装対象はPrototype 0のみ。実顔での表示・追従はユーザー確認済みです。実カメラでの5分連続動作など、残る受入項目は個別に確認します。**
 
 ## 構成
 
@@ -17,10 +17,15 @@ InteractiveShowcase/
 │   └── Tests/Editor/    # Unity自動テスト
 ├── Packages/            # 既存URP構成を保持
 ├── ProjectSettings/
+├── StartVision.cmd        # Python通常起動（現在の作業フォルダに依存しない）
+├── StartVisionPreview.cmd # カメラプレビュー付き起動
+├── Tools/BuildWindows.cs  # Editorから検証用Windowsビルドを作成
 ├── vision/
 │   ├── main.py
 │   ├── face_detector.py
 │   ├── udp_sender.py
+│   ├── validate_pipeline.py # カメラを使わない通し検証
+│   ├── run_vision.cmd      # 起動スクリプト共通処理
 │   ├── requirements.txt
 │   ├── requirements-lock.txt
 │   └── tests/
@@ -70,6 +75,15 @@ py -3.11 -m venv vision/.venv
 ./vision/.venv/Scripts/python.exe vision/main.py --camera 0
 ```
 
+セットアップ済みなら、ルートの **`StartVision.cmd` をダブルクリック**しても起動できます。
+映像を確認する場合は **`StartVisionPreview.cmd`** を使います。どちらも自動的にプロジェクトのフォルダへ移動し、専用venvのPythonを選びます。venvがない場合はセットアップ案内を表示して終了します。エラー時はメッセージを読めるようウィンドウを保持します。
+
+PowerShellの現在位置にかかわらず、絶対パスでも起動できます。
+
+```powershell
+& "C:\Users\25111103\Documents\GitHub\InteractiveShowcase\StartVisionPreview.cmd" --camera 0
+```
+
 別のカメラは `--camera 1` 等で指定します。`--preview` を付けると保存せずにカメラ映像と検出中心を一時表示します（**プレビューは左右反転なし**）。終了はCtrl+C、プレビューありではQも使えます。
 Unityを先に起動してもPythonを先に起動しても構いません。ポートは既定5005、Pythonの `--port` とUnityのReceiverのPortを一致させてください。
 
@@ -98,6 +112,15 @@ Unityは `Window > General > Test Runner > EditMode` で `InteractiveShowcase.Te
 実UDP受信、タイムアウト、不正データ、再有効化、ポート解放、座標変換を検査します。
 テストは一時ポートを利用し、通常の5005へ割り込みません。
 検証結果と未確認事項は [docs/validation.md](docs/validation.md) に記載します。
+
+人工データの通し試験・異常系・5分試験とWindowsビルドの再現手順は [docs/automated-validation.md](docs/automated-validation.md) に記載します。
+この試験はカメラを開きません。通常の顔検出Pythonは停止し、Unity EditorとWindowsアプリの受信を同時に起動しないでください（どちらも既定ポート5005を使用します）。
+
+## Windows用の検証アプリ
+
+出力先は `Builds/WindowsPrototype0/InteractiveShowcase.exe` です。作成済みビルドがある場合は、このexeを起動してから `StartVision.cmd` または `StartVisionPreview.cmd` を実行します。
+別PCへ渡す場合はexeだけでなく **`WindowsPrototype0` フォルダ全体**が必要です。Python環境もそのPCで別途セットアップします。
+今回は検証専用のDevelopment Buildです。3D演出や自動起動設定は追加していません。再ビルド手順は前述の自動検証手順を参照してください。
 
 ## 人間による受入試験（開発用PC）
 
