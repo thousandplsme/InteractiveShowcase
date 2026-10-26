@@ -88,15 +88,20 @@ namespace InteractiveShowcase.Tests
             using (var reservation = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0)))
                 port = ((IPEndPoint)reservation.Client.LocalEndPoint).Port;
             var serialized = new UnityEditor.SerializedObject(receiver);
+            serialized.FindProperty("useSharedSettings").boolValue = false;
             serialized.FindProperty("port").intValue = port;
             serialized.FindProperty("timeoutSeconds").floatValue = .15f;
             serialized.ApplyModifiedPropertiesWithoutUndo();
+            var followerSettings = new UnityEditor.SerializedObject(follower);
+            followerSettings.FindProperty("useSharedSettings").boolValue = false;
+            followerSettings.ApplyModifiedPropertiesWithoutUndo();
             using (var sender = new UdpClient())
             {
                 try
                 {
                     root.SetActive(true);
                     Assert.IsFalse(receiver.TryGetFace(out _));
+                    Assert.AreEqual(UdpVisionReceiver.ReceptionState.Waiting, receiver.State);
                     for (int cycle = 0; cycle < 2; cycle++)
                     {
                         byte[] face = Encoding.UTF8.GetBytes("{\"faceDetected\":true,\"x\":0.2,\"y\":0.8,\"size\":0.3}");
@@ -108,6 +113,7 @@ namespace InteractiveShowcase.Tests
                             receiver.SendMessage("Update");
                         }
                         Assert.IsTrue(receiver.TryGetFace(out var received), "UDP did not arrive");
+                        Assert.AreEqual(UdpVisionReceiver.ReceptionState.Tracking, receiver.State);
                         Assert.AreEqual(.2f, received.x);
                         follower.SendMessage("LateUpdate");
                         Assert.IsTrue(marker.activeSelf);
@@ -123,6 +129,7 @@ namespace InteractiveShowcase.Tests
                             receiver.SendMessage("Update");
                         }
                         Assert.IsFalse(receiver.TryGetFace(out _), "Stale face remained visible");
+                        Assert.AreEqual(UdpVisionReceiver.ReceptionState.TimedOut, receiver.State);
                         follower.SendMessage("LateUpdate");
                         Assert.IsFalse(marker.activeSelf);
                         root.SetActive(false);
@@ -141,6 +148,7 @@ namespace InteractiveShowcase.Tests
                     } while (absent == null && UnityEditor.EditorApplication.timeSinceStartup < noFaceDeadline);
                     Assert.IsNotNull(absent);
                     Assert.IsFalse(absent.faceDetected);
+                    Assert.AreEqual(UdpVisionReceiver.ReceptionState.NoFace, receiver.State);
                 }
                 finally { Object.DestroyImmediate(root); Object.DestroyImmediate(area); }
             }

@@ -4,6 +4,11 @@
 Webカメラの顔位置をPythonで検出し、同一PCのUnity Canvas上の円形マーカーを追従させます。
 **実装対象はPrototype 0のみ。Windowsアプリでの実顔追従、気にならない程度の体感遅延、実カメラでの約5分連続動作をユーザー確認済みです。5分を超える連続動作と店頭環境は未確認です。**
 
+左右・上下の追従方向と、顔の退出・再登場もユーザー確認済みです。
+初回は `SetupVision.cmd`、診断は `CheckEnvironment.cmd` を使用できます。
+配布版の操作・設定・復旧方法は [distribution.md](docs/distribution.md)、整備作業の結果は [completion.md](docs/completion.md) を参照してください。
+整備版は `v0.1.0` として固定します。自動確認はPython 11件・Unity 27件、Windows人工通信10分（443チェック）です。実カメラの5分超確認とは区別しています。
+
 ## 構成
 
 既存のURPプロジェクトがリポジトリ直下に作成済みのため、移動・複製せず維持しています。
@@ -19,6 +24,10 @@ InteractiveShowcase/
 ├── ProjectSettings/
 ├── StartVision.cmd        # Python通常起動（現在の作業フォルダに依存しない）
 ├── StartVisionPreview.cmd # カメラプレビュー付き起動
+├── StartShowcase.cmd      # ReleaseアプリとPythonを起動
+├── SetupVision.cmd        # Python 3.11 x64の専用venvを構築
+├── CheckEnvironment.cmd   # カメラを開かない依存関係・設定・ポート診断
+├── config/vision.json     # Python / Unity共通の起動設定
 ├── Tools/BuildWindows.cs  # Editorから検証用Windowsビルドを作成
 ├── vision/
 │   ├── main.py
@@ -51,6 +60,8 @@ MediaPipeの間接依存としてJAX・Matplotlib・sounddevice等が入りま�
 ## Windowsでのセットアップ
 
 以下はリポジトリルートでPowerShellから実行します。仮想環境のactivateは不要です。
+
+`SetupVision.cmd` でも以下と同じ固定依存関係を構築できます。既存venvを削除せず、Pythonの版が異なる場合やvenv以外のフォルダがある場合は停止します。再実行時も同じ固定一覧を使用します。
 
 ```powershell
 # Python Launcherで3.11が見つかる環境
@@ -85,16 +96,18 @@ PowerShellの現在位置にかかわらず、絶対パスでも起動できま�
 ```
 
 別のカメラは `--camera 1` 等で指定します。`--preview` を付けると保存せずにカメラ映像と検出中心を一時表示します（**プレビューは左右反転なし**）。終了はCtrl+C、プレビューありではQも使えます。
-Unityを先に起動してもPythonを先に起動しても構いません。ポートは既定5005、Pythonの `--port` とUnityのReceiverのPortを一致させてください。
+Unityを先に起動してもPythonを先に起動しても構いません。既定では両者が `config/vision.json` を読みます。Pythonの `--camera` / `--port` はその起動だけの上書きです。`--port` を変更する場合はUnity側の設定も一致させてください。
 
-`Vision Tracking` のFaceFollowerで調整します。
+通常は `config/vision.json` で調整し、両方を再起動します。Editorではリポジトリ直下、Windowsアプリではexeと同じフォルダのconfigを読みます。Inspectorで個別調整する場合のみ、対象コンポーネントのUse Shared SettingsをOFFにしてください。
 
 | 設定 | 既定 | 意味 |
 |---|---|---|
-| Mirror X | ON | 鏡のように左右反転。生カメラ映像と同じ座標方向にするならOFF |
-| Flip Y | ON | 画像の下向きYをCanvasの上向きYへ変換 |
-| Smooth Time | 0.08秒 | 追従の平滑化。大きいほど緩やか |
-| Receiver / Timeout Seconds | 0.5秒 | 有効データが来なくなったら非表示 |
+| mirrorX | true | 鏡のように左右反転。生カメラ映像と同じ座標方向にするならfalse |
+| flipY | true | 画像の下向きYをCanvasの上向きYへ変換 |
+| smoothTime | 0.08秒 | 追従の平滑化。大きいほど緩やか |
+| timeoutSeconds | 0.5秒 | 有効データが来なくなったら非表示 |
+
+EditorのReceiverのInspectorには受信状態を表示します。Waiting=有効データ待ち、NoFace=通信中だが顔なし、Tracking=追従中、TimedOut=通信途絶、Error=設定/受信エラー、Stopped=停止です。人物情報や受信座標のログは追加しません。
 
 最初の検出・再検出時は顔位置へ即座に表示し、継続検出中のみ補間します。
 顔サイズは送信・保持しますがPrototype 0のマーカーは直径80の固定サイズです。
@@ -120,7 +133,9 @@ Unityは `Window > General > Test Runner > EditMode` で `InteractiveShowcase.Te
 
 出力先は `Builds/WindowsPrototype0/InteractiveShowcase.exe` です。作成済みビルドがある場合は、このexeを起動してから `StartVision.cmd` または `StartVisionPreview.cmd` を実行します。
 別PCへ渡す場合はexeだけでなく **`WindowsPrototype0` フォルダ全体**が必要です。Python環境もそのPCで別途セットアップします。
-今回は検証専用のDevelopment Buildです。3D演出や自動起動設定は追加していません。再ビルド手順は前述の自動検証手順を参照してください。
+これは検証専用のDevelopment Buildです。配布用Release版は `Builds/WindowsPrototype0Release/`、Pythonや操作説明をまとめたZIPは `dist/` に生成します。`StartShowcase.cmd` はRelease版と、そのexe横の設定を使うPythonを起動します。再ビルド・梱包手順は前述の自動検証手順を参照してください。
+
+初心者向けの仕組み・コード解説は [code-guide.md](docs/code-guide.md) を参照してください。
 
 ## 人間による受入試験（開発用PC）
 

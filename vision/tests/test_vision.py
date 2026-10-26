@@ -67,6 +67,21 @@ class VisionTests(unittest.TestCase):
             detector.return_value.close.assert_called_once()
             capture.return_value.release.assert_called_once()
 
+    def test_camera_disconnect_cleanup_and_config_override(self):
+        import main
+        with patch.object(sys, "argv", ["main.py", "--camera", "2", "--port", "5006"]), \
+                patch("cv2.VideoCapture") as capture, patch.object(main, "FaceDetector") as detector, \
+                patch.object(main, "UdpSender") as sender:
+            capture.return_value.isOpened.return_value = True
+            capture.return_value.read.return_value = (False, None)
+            self.assertEqual(main.main(), 1)
+            capture.assert_called_once_with(2)
+            sender.assert_called_once_with(5006)
+            sender.return_value.send.assert_called_with({"faceDetected": False})
+            sender.return_value.close.assert_called_once()
+            detector.return_value.close.assert_called_once()
+            capture.return_value.release.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

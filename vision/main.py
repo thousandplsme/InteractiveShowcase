@@ -5,14 +5,22 @@ import time
 
 from face_detector import FaceDetector
 from udp_sender import UdpSender
+from settings import DEFAULT_PATH, load_settings
 
 
 def main():
     parser = argparse.ArgumentParser(description="Local single-face tracking; Ctrl+C to stop")
-    parser.add_argument("--camera", type=int, default=0, help="OpenCV camera index")
-    parser.add_argument("--port", type=int, default=5005)
+    parser.add_argument("--config", default=str(DEFAULT_PATH), help="Shared settings JSON")
+    parser.add_argument("--camera", type=int, help="Override configured OpenCV camera index")
+    parser.add_argument("--port", type=int, help="Override configured UDP port")
     parser.add_argument("--preview", action="store_true", help="Show transient, unmirrored camera view; Q to stop")
     args = parser.parse_args()
+    try:
+        settings = load_settings(args.config)
+    except (OSError, ValueError) as error:
+        parser.error("Cannot load settings: " + str(error))
+    args.camera = settings["cameraIndex"] if args.camera is None else args.camera
+    args.port = settings["port"] if args.port is None else args.port
     if args.camera < 0 or not 1 <= args.port <= 65535:
         parser.error("camera must be >= 0; port must be 1..65535")
 

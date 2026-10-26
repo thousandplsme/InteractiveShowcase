@@ -75,6 +75,37 @@ New-Item -ItemType Directory -Force $validationDirectory | Out-Null
 検証アプリは通常起動では検証ファイルを読み書きしません。上記の明示的な引数を指定した場合だけ有効になります。
 試験終了後はアプリを閉じます。通常の実顔確認時は、検証用引数を付けずにexeを起動してください。
 
+## 5. 整備後の再現性・長めの人工通信試験
+
+既存venvに触れず、同じWindows PCの別venvへ構築できます（別PC試験ではありません）。
+
+```powershell
+.\Tools\SetupVision.ps1 -EnvironmentPath "$PWD\TestResults\repro\.venv"
+.\TestResults\repro\.venv\Scripts\python.exe -m unittest discover -s vision/tests -v
+.\TestResults\repro\.venv\Scripts\python.exe vision/doctor.py --no-pause
+.\vision\.venv\Scripts\python.exe Tools/audit_repository.py
+```
+
+10分の人工通信はDevelopmentアプリのconfigのportを5006にしたうえで、専用の新しい検証フォルダを使って実行します。Pythonも `--port 5006` に合わせます。試験後はアプリを終了し、ビルド先のconfigを元へ戻してください。
+
+```powershell
+.\vision\.venv\Scripts\python.exe vision/validate_pipeline.py --directory TestResults/player-soak-final --port 5006 --soak-seconds 600
+```
+
+## 6. 配布用ReleaseビルドとZIP
+
+```powershell
+unity command script run Tools/BuildWindows.cs --caller plugin --skill unity-cli --timeout 600 --format json -- --entry Prototype0WindowsBuild.BuildRelease --timeout 600
+# ソース監査とcommitを済ませた後に、まだ存在しない版番号で実行
+.\vision\.venv\Scripts\python.exe Tools/package_release.py --version 0.1.0
+.\vision\.venv\Scripts\python.exe Tools/verify_package.py dist/InteractiveShowcase-0.1.0.zip
+```
+
+Release出力は `Builds/WindowsPrototype0Release/`、報告は `TestResults/windows-release-build.json`。
+梱包時にDevelopment専用ValidationProbeの型名が実行用assemblyに残っていないことを確認します。ZIPとSHA-256ファイルは `dist/` に生成され、Gitには含めません。既存の同じ版の配布フォルダ・ZIPは上書きしません。
+`manifest.json` には全同梱ファイル（manifest自身を除く）のSHA-256とソースcommitを記録します。
+本体exeのみでなくフォルダ一式が必要です。Release版は内部検証プローブが使えないため、Development版の自動通し試験結果とRelease版の起動確認を区別します。
+
 ## 確認範囲
 
 内部状態と描画メッシュの自動確認は、実際の見え方・体感遅延・実カメラの長時間安定性・照明耐性の合格を意味しません。

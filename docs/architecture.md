@@ -46,7 +46,7 @@ Webカメラ
 
 Overlay Canvas、基準1920×1080、Scale With Screen Size、Match 0.5。
 Game Viewの「No cameras rendering」を防ぐ背景専用Cameraを1台配置します。Solid Color・Culling Mask=Nothingで、3Dオブジェクトは描画しません。マーカーは従来どおりOverlay Canvasで描画します。
-`FaceFollower` はCanvasの現在サイズを用いて座標を変換します。X反転とY反転は独立したInspector設定です。
+`FaceFollower` はCanvasの現在サイズを用いて座標を変換します。X反転とY反転は独立した設定です。通常は共通JSONを読み、Use Shared SettingsをOFFにした場合だけInspectorの値を使います。
 マーカーはCanvas直下、中心anchor/pivotで直径80。サイズ情報による拡縮は行いません。
 初回・復帰時は即座に位置を合わせ、連続検出中はSmoothDamp（既定0.08秒、unscaledDeltaTime）で平滑化します。
 未検出時はマーカーのみ非アクティブにし、受信とFollowerを動かし続けます。
@@ -75,3 +75,14 @@ ObserverはFollowerの後に確認し、Python側はフレームの進行した�
 
 `Tools/BuildWindows.cs` はビルド対象シーンを明示し、既存のBuild Settingsのシーン一覧は変更しません。
 ビルドとテスト結果は `Builds/` と `TestResults/` に保存し、Gitには含めません。
+
+## 起動設定と診断
+
+`config/vision.json` はPythonとUnityが起動時に読む6項目だけの設定です。cameraIndex・port・mirrorX・flipY・smoothTime・timeoutSecondsを持ち、送信先アドレスは変更できません。型・範囲・必須項目・重複キーを検証し、不正な設定で黙って別ポートへ接続しません。
+Editorはリポジトリ直下、Windowsアプリはexe横のconfigを参照します。ビルド時に設定をコピーし、配布ZIP内ではPythonとUnityが同じファイルを使用します。
+
+受信状態はメインスレッドで参照するStopped / Waiting / NoFace / Tracking / TimedOut / Errorです。EditorのカスタムInspectorに表示し、展示画面へ操作用UIを追加しません。
+`vision/doctor.py` はvenv・固定依存・import・設定・一時的なポートbindを調べます。カメラは開かず、ポート使用中だけでUnityの受信成功とは判断しません。
+
+`SetupVision.cmd` は既存Python 3.11 x64を探し、`vision/setup_environment.py` が専用venvへ固定依存を入れます。Python本体やグローバルパッケージのアップグレードは行いません。
+`Tools/package_release.py` は成功したReleaseビルドと必要なPythonソース・操作資料だけをZIPにまとめ、commitとSHA-256一覧を記録します。venv・カメラデータ・検証出力・Editorプロジェクトは同梱しません。

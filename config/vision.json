@@ -1,0 +1,8 @@
+{
+  "cameraIndex": 0,
+  "port": 5005,
+  "mirrorX": true,
+  "flipY": true,
+  "smoothTime": 0.08,
+  "timeoutSeconds": 0.5
+}

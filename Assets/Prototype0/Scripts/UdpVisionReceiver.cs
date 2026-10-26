@@ -10,6 +10,8 @@ namespace InteractiveShowcase
 {
     public sealed class UdpVisionReceiver : MonoBehaviour
     {
+        [SerializeField, Tooltip("Read config/vision.json at startup. Disable only for isolated tests or Inspector overrides.")]
+        private bool useSharedSettings = true;
         [SerializeField] private int port = 5005;
         [SerializeField, Min(0.1f)] private float timeoutSeconds = 0.5f;
         private readonly object gate = new object();
@@ -21,6 +23,13 @@ namespace InteractiveShowcase
         private double lastValidTime = double.NegativeInfinity;
         private VisionPacket latest;
         private string failure;
+        private bool faulted;
+
+        public enum ReceptionState { Stopped, Waiting, NoFace, Tracking, TimedOut, Error }
+        public ReceptionState State => faulted ? ReceptionState.Error : !running ? ReceptionState.Stopped
+            : latest == null ? ReceptionState.Waiting : Now - lastValidTime > timeoutSeconds ? ReceptionState.TimedOut
+            : latest.faceDetected ? ReceptionState.Tracking : ReceptionState.NoFace;
+        public int Port => port;
 
         [Serializable]
         public sealed class VisionPacket
@@ -42,10 +51,17 @@ namespace InteractiveShowcase
         private void OnEnable()
         {
             latest = null;
+            faulted = false;
             lastValidTime = double.NegativeInfinity;
             lock (gate) { pending = null; failure = null; }
             try
             {
+                if (useSharedSettings)
+                {
+                    VisionSettings settings = VisionSettings.Load();
+                    port = settings.port;
+                    timeoutSeconds = settings.timeoutSeconds;
+                }
                 client = new UdpClient(new IPEndPoint(IPAddress.Loopback, port));
                 client.Client.ReceiveTimeout = 100;
                 running = true;
@@ -54,12 +70,14 @@ namespace InteractiveShowcase
                 worker = new Thread(() => ReceiveLoop(socket)) { IsBackground = true, Name = "Vision UDP" };
                 worker.Start();
             }
-            catch (Exception error) when (error is SocketException || error is ArgumentException)
+            catch (Exception error) when (error is SocketException || error is ArgumentException
+                || error is System.IO.IOException || error is UnauthorizedAccessException || error is FormatException)
             {
+                faulted = true;
                 running = false;
                 client?.Close();
                 client = null;
-                UnityEngine.Debug.LogError("Vision UDP could not start. Check the port: " + error.Message, this);
+                UnityEngine.Debug.LogError("Vision UDP could not start. Check config/vision.json and port: " + error.Message, this);
             }
         }
 
@@ -98,7 +116,7 @@ namespace InteractiveShowcase
                 json = pending; receivedAt = pendingTime; pending = null;
                 error = failure; failure = null;
             }
-            if (error != null) UnityEngine.Debug.LogError(error, this);
+            if (error != null) { faulted = true; UnityEngine.Debug.LogError(error, this); }
             if (json != null && TryParse(json, out VisionPacket packet))
             {
                 latest = packet;

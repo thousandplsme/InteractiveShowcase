@@ -4,6 +4,8 @@ namespace InteractiveShowcase
 {
     public sealed class FaceFollower : MonoBehaviour
     {
+        [SerializeField, Tooltip("Read config/vision.json at startup. Disable for Inspector overrides.")]
+        private bool useSharedSettings = true;
         [SerializeField] private UdpVisionReceiver receiver;
         [SerializeField] private RectTransform area;
         [SerializeField] private RectTransform marker;
@@ -12,6 +14,22 @@ namespace InteractiveShowcase
         [SerializeField, Min(0.001f)] private float smoothTime = 0.08f;
         private Vector2 velocity;
         private bool visible;
+
+        private void OnEnable()
+        {
+            if (!useSharedSettings) return;
+            try
+            {
+                VisionSettings settings = VisionSettings.Load();
+                mirrorX = settings.mirrorX; flipY = settings.flipY; smoothTime = settings.smoothTime;
+            }
+            catch (System.Exception error) when (error is System.IO.IOException || error is System.UnauthorizedAccessException
+                || error is System.FormatException || error is System.ArgumentException)
+            {
+                Debug.LogError("FaceFollower settings error: " + error.Message, this);
+                enabled = false;
+            }
+        }
 
         public void Configure(UdpVisionReceiver source, RectTransform bounds, RectTransform target)
         {
